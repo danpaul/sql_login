@@ -2,7 +2,7 @@
   "name": "sql_login",
   "version": "1.0.0",
   "description": "Basic user email and password storage and hashing, verification backed by Knex compatible SQL DB.",
-  "main": "sql_login.js",
+  "main": "index.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/danpaul/sql_login.git"
