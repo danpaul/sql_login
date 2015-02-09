@@ -4,7 +4,7 @@ var knex = require('knex')
 var async = require('async')
 var assert = require('assert')
 
-var SqlLogin = require('../sql_login')
+var SqlLogin = require('../index')
 
 var dbCreds = {
     client: 'mysql',

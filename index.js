@@ -1,15 +1,3 @@
-// This module is designed to be a simple back end component for user authentication
-//      but is considered incomplete on its own.
-//
-// This module prvoides:
-//  Basic user email and password storage and hashing and verification backed by knex compatible
-//      SQL DB.
-//
-// This module does not provide:
-//  Session management.
-//  Credential validation (i.e. email validation)
-//  Password reset ability.
-
 (function(){
 
 var _ = require('underscore')
@@ -23,14 +11,8 @@ var errorCodes = {
     '4': 'New password can not be the same as the old password.'
 }
 
-/**
 
-Options include:
-    knexObject,
-    tableName,
-    useCache
-
-*/
+// Options include: knexObject, tableName
 module.exports = function(options, callback){
 
     if( !options.knex || !options.tableName ){
