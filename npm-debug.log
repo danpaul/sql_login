@@ -1,0 +1,70 @@
+0 info it worked if it ends with ok
+1 verbose cli [ 'node', '/usr/local/bin/npm', 'publish' ]
+2 info using npm@1.4.28
+3 info using node@v0.10.33
+4 verbose publish [ '.' ]
+5 verbose cache add [ '.', null ]
+6 verbose cache add name=undefined spec="." args=[".",null]
+7 verbose parsed url { protocol: null,
+7 verbose parsed url   slashes: null,
+7 verbose parsed url   auth: null,
+7 verbose parsed url   host: null,
+7 verbose parsed url   port: null,
+7 verbose parsed url   hostname: null,
+7 verbose parsed url   hash: null,
+7 verbose parsed url   search: null,
+7 verbose parsed url   query: null,
+7 verbose parsed url   pathname: '.',
+7 verbose parsed url   path: '.',
+7 verbose parsed url   href: '.' }
+8 silly lockFile 3a52ce78- .
+9 verbose lock . /Users/sanbornadmin/.npm/3a52ce78-.lock
+10 verbose tar pack [ '/Users/sanbornadmin/.npm/sql_login/1.0.0/package.tgz', '.' ]
+11 verbose tarball /Users/sanbornadmin/.npm/sql_login/1.0.0/package.tgz
+12 verbose folder .
+13 info prepublish sql_login@1.0.0
+14 silly lockFile 1f1177db-tar tar://.
+15 verbose lock tar://. /Users/sanbornadmin/.npm/1f1177db-tar.lock
+16 silly lockFile 204ef7dc--npm-sql-login-1-0-0-package-tgz tar:///Users/sanbornadmin/.npm/sql_login/1.0.0/package.tgz
+17 verbose lock tar:///Users/sanbornadmin/.npm/sql_login/1.0.0/package.tgz /Users/sanbornadmin/.npm/204ef7dc--npm-sql-login-1-0-0-package-tgz.lock
+18 silly lockFile 1f1177db-tar tar://.
+19 silly lockFile 1f1177db-tar tar://.
+20 silly lockFile 204ef7dc--npm-sql-login-1-0-0-package-tgz tar:///Users/sanbornadmin/.npm/sql_login/1.0.0/package.tgz
+21 silly lockFile 204ef7dc--npm-sql-login-1-0-0-package-tgz tar:///Users/sanbornadmin/.npm/sql_login/1.0.0/package.tgz
+22 silly lockFile 99afdfb3-dmin-npm-sql-login-1-0-0-package /Users/sanbornadmin/.npm/sql_login/1.0.0/package
+23 verbose lock /Users/sanbornadmin/.npm/sql_login/1.0.0/package /Users/sanbornadmin/.npm/99afdfb3-dmin-npm-sql-login-1-0-0-package.lock
+24 silly lockFile 99afdfb3-dmin-npm-sql-login-1-0-0-package /Users/sanbornadmin/.npm/sql_login/1.0.0/package
+25 silly lockFile 99afdfb3-dmin-npm-sql-login-1-0-0-package /Users/sanbornadmin/.npm/sql_login/1.0.0/package
+26 silly lockFile 3a52ce78- .
+27 silly lockFile 3a52ce78- .
+28 silly publish { name: 'sql_login',
+28 silly publish   version: '1.0.0',
+28 silly publish   description: 'Basic user email and password storage and hashing, verification backed by Knex compatible SQL DB.',
+28 silly publish   main: 'index.js',
+28 silly publish   repository: { type: 'git', url: 'https://github.com/danpaul/sql_login.git' },
+28 silly publish   author: { name: 'Dan Breczinski' },
+28 silly publish   license: 'ISC',
+28 silly publish   bugs: { url: 'https://github.com/danpaul/sql_login/issues' },
+28 silly publish   homepage: 'https://github.com/danpaul/sql_login',
+28 silly publish   dependencies:
+28 silly publish    { async: '^0.9.0',
+28 silly publish      bcrypt: '^0.8.1',
+28 silly publish      knex: '^0.7.3',
+28 silly publish      mysql: '^2.5.4',
+28 silly publish      underscore: '^1.7.0' },
+28 silly publish   readme: 'This module is designed to be a simple back end component for user authentication but is considered incomplete on its own. The module requires intialization of a [Knex object](http://knexjs.org).\n\nThis module prvoides:\n* Basic user email and password storage, hashing and verification backed by knex compatible SQL DB (Postgres, MySQL, MariaDB, SQLite3).\n\nThis module does not provide:\n* Session management.\n* Credential validation (i.e. email validation)\n* Password reset ability (i.e. sending password reset notices).\n\nSee test/test.js for usage example. Check out the code or message me if you have any questions.',
+28 silly publish   readmeFilename: 'readme.md',
+28 silly publish   gitHead: 'c2d5c9862bd14bf1d7e688b07bb4e319fca7476d',
+28 silly publish   _id: 'sql_login@1.0.0',
+28 silly publish   scripts: {},
+28 silly publish   _shasum: '86f810afbb1482475f71e41a3c956183d0276034',
+28 silly publish   _from: '.' }
+29 error need auth auth and email required for publishing
+29 error need auth You need to authorize this machine using `npm adduser`
+30 error System Darwin 13.3.0
+31 error command "node" "/usr/local/bin/npm" "publish"
+32 error cwd /Applications/MAMP/htdocs/sql_login
+33 error node -v v0.10.33
+34 error npm -v 1.4.28
+35 error code ENEEDAUTH
+36 verbose exit [ 1, true ]

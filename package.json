@@ -1,6 +1,6 @@
 {
   "name": "sql_login",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Basic user email and password storage and hashing, verification backed by Knex compatible SQL DB.",
   "main": "index.js",
   "repository": {

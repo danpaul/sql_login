@@ -3,27 +3,41 @@
 var _ = require('underscore')
 var async = require('async')
 var bcrypt = require('bcrypt')
+var base64url = require('base64url')
+var crypto = require('crypto')
 
 var errorCodes = {
     '1': 'A user with that email already exists.',
     '2': 'Unable to find user.',
     '3': 'Password is incorrect.',
-    '4': 'New password can not be the same as the old password.'
+    '4': 'New password can not be the same as the old password.',
+    '5': 'Unable to verify confirmation token.',
+    '6': 'Password reset token is not correct.',
+    '7': 'Password reset token has expired.'
 }
 
+var sqlLoginSchema = function(table){
+    table.increments()
+    table.string('email').index().unique()
+    table.string('password')
+    table.boolean('is_confirmed').default(false)
+    table.string('confirmation_token').default('')
+    table.string('reset_token').default('')
+    table.integer('reset_token_sent').default(0)
+}
 
 // Options include: knexObject, tableName
 module.exports = function(options, callback){
 
     if( !options.knex || !options.tableName ){
-        callback(newError('Incorrect arguments passed to Login on initialization.'));
+        callback(new Error('Incorrect arguments passed to Login on initialization.'));
         return;
     }
 
     var self = this
-
     self.knex = options.knex
     self.tableName = options.tableName
+    self.passwordResetExpiration = 60 * 60 * 24; // 24 hours
 
     this.init = function(){
         // check if table exists
@@ -31,13 +45,10 @@ module.exports = function(options, callback){
             .then(function(exists) {
                 if( !exists ){
                     // create the table
-                    self.knex.schema.createTable(self.tableName, function(table){
-                        table.increments()
-                        table.string('email').index().unique()
-                        table.string('password')
-                    })
-                    .then(function(){ callback(); })
-                    .catch(callback)
+                    self.knex.schema.createTable(self.tableName, sqlLoginSchema)
+                        .then(function(){ callback(); })
+                        .catch(callback)
+
                 } else { callback(); }
             })
             .catch(callback)
@@ -55,11 +66,11 @@ module.exports = function(options, callback){
             }
 
             // confirm user was returned
-            if( userIn.length !== 1 ){
+            if( userIn === null ){
                 callbackIn(null, self.getError(2))
                 return;
             }
-            var user = userIn[0];
+            var user = userIn;
             // compare passwords
 
             bcrypt.compare(options.password, user.password, function(err, res) {
@@ -70,31 +81,47 @@ module.exports = function(options, callback){
                 if( res !== true ){
                     callbackIn(null, self.getError(3))
                 } else {
-                    callbackIn(null, self.getSuccess())
+                    var successObj = self.getSuccess()
+                    successObj.userId = user.id
+                    successObj.isConfirmed = user.is_confirmed
+                    callbackIn(null, successObj)
                 }
                 
             });
         })
     }
 
-    this.getError = function(errorCode){
-        return({
-            status: 'failure',
-            code: errorCode.toString(),
-            message: errorCodes[errorCode.toString()]
+
+    this.confirmUser = function(identifier, token, callback){
+        self.getUser(identifier, function(err, user){
+            if( err ){
+                callback(err)
+                return
+            }
+            if( user === null ){
+                callback(null, self.getError(2))
+                return
+            }
+
+            if( user.is_confirmed == true ){
+                callback(null, self.getSuccess())
+                return
+            }
+
+            if( user.confirmation_token !== token ){
+                callback(null, self.getError(5))
+                return
+            }
+
+            self.knex(self.tableName)
+                .where('id', user.id)
+                .update({
+                    is_confirmed: true,
+                    confirmation_token: ''
+                })
+                .then(function(){callback(null, self.getSuccess())})
+                .catch(callback)
         })
-    }
-
-    this.getSuccess = function(){ return { status: 'success'} }
-
-    // gets user from email, passes back array (one element if found else empty)
-    this.getUser = function(email, callbackIn){
-        // lookup user
-        self.knex(self.tableName)
-            .where({'email': email})
-            .then(function(userIn){ callbackIn(null, userIn); })
-            .catch(callbackIn)
-
     }
 
     // options object should include email and password
@@ -121,11 +148,23 @@ module.exports = function(options, callback){
                 return
             }
 
+            var confirmationToken = self.getRandomString()
+
             // save user
             self.knex(self.tableName)
-                .insert({email: options.email, password: hash})
-                .then(function(){
-                    callbackIn(null, self.getSuccess())
+                .insert({
+                    email: options.email,
+                    password: hash,
+                    confirmation_token: confirmationToken
+                })
+                .then(function(response){
+                    successObject = self.getSuccess();
+                    successObject.user = {
+                        id: response[0],
+                        email: options.email,
+                        confirmationToken: confirmationToken
+                    }
+                    callbackIn(null, successObject)
                 })
         });
     }
@@ -138,24 +177,140 @@ module.exports = function(options, callback){
             .catch(callbackIn)
     }
 
+    this.getError = function(errorCode){
+        return({
+            status: 'failure',
+            code: errorCode.toString(),
+            message: errorCodes[errorCode.toString()]
+        })
+    }
 
-    // takes options with email and password (new password)
+    this.getRandomString = function(){
+        return base64url(crypto.randomBytes(48))
+    }
+
+    this.getCurrentTime = function(){
+        return Math.floor(Date.now()/1000);
+    }
+
+    // sets up a new reset code for user
+    this.getResetCode = function(identifier, callback){
+        self.getUser(identifier, function(err, user){
+            if( err ){
+                callback(err);
+                return;
+            }
+            if( user === null ){
+                callback(null, self.getError(2))
+                return;
+            }
+            // generate code
+            var resetCode = self.getRandomString();
+            // get encrypted password
+            bcrypt.hash(resetCode, 8, function(err, hash) {
+                if( err ){
+                    callbackIn(err)
+                    return;
+                }
+                self.knex(self.tableName)
+                    .where('id', user.id)
+                    .update({
+                        reset_token: hash,
+                        reset_token_sent: self.getCurrentTime()
+                    })
+                    .then(function(){
+                        var response = self.getSuccess();
+                        response.resetCode = resetCode;
+                        callback(null, response) 
+                    })
+                    .catch(callback)
+            })
+        })
+    }
+
+    this.getSuccess = function(){ return {status: 'success'} }
+
+    // gets user from email or id, passes back null if user not found, else user object
+    this.getUser = function(identifier, callbackIn){
+
+        if( isNaN(identifier) ){
+            var whereClause = {'email': identifier};
+        } else {
+            var whereClause = {'id': identifier};
+        }
+
+        // lookup user
+        self.knex(self.tableName)
+            .where(whereClause)
+            .then(function(userIn){
+                if( userIn.length === 0 ){
+                    callbackIn(null, null)
+                } else {
+                    callbackIn(null, userIn[0])
+                }
+            })
+            .catch(callbackIn)
+    }
+
+this.passwordTokenHasExpired = function(resetTokenSent){
+    var currentTime = self.getCurrentTime();
+    return( (currentTime - self.passwordResetExpiration) < resetTokenSent )
+}
+
+
+    this.resetPasswordWithCode = function(userId, resetCode, newPassword, callback){
+        // get user
+        self.getUser(userId, function(err, user){
+            if( err ){
+                callback(err)
+                return
+            }
+            if( user === null ){
+                callback(null, self.getError(2))
+                return;
+            }
+            // compare reset coes
+            bcrypt.compare(resetCode, user.reset_token, function(err, response){
+                if( response !== true ){
+                    callback(null, self.getError(6))
+                    return;
+                }
+
+                if( self.passwordTokenHasExpired(response.reset_token_sent) ){
+                    callback(null, self.getError(7))
+                    return;
+                }
+                self.updatePassword({id: userId, password: newPassword}, callback);
+            })
+        })
+    }
+
+    // takes options with email or id and password (new password)
     // passes back a response object
     this.updatePassword = function(options, callbackIn){
 
+        if( typeof(options.id) !== 'undefined' ){
+            var identifier = options.id;
+            var whereClause = {id: options.id} 
+        } else {
+            var identifier = options.email;
+            var whereClause = {email: options.email}
+        }
+
         // lookup user
-        self.getUser(options.email, function(err, userIn){
+        self.getUser(identifier, function(err, userIn){
+
             if( err ){
                 callbackIn(err);
                 return;
             }
 
             // confirm user was returned
-            if( userIn.length !== 1 ){
+            if( userIn === null ){
                 callbackIn(null, self.getError(2))
                 return;
             }
-            var user = userIn[0];
+            var user = userIn;
             // compare passwords
             bcrypt.compare(options.password, user.password, function(err, res) {
                 if( err ){
@@ -165,7 +320,6 @@ module.exports = function(options, callback){
                 if( res === true ){
                     callbackIn(null, self.getError(4))
                 } else {
-
                     // get hash of new password
                     bcrypt.hash(options.password, 8, function(err, hash) {
                         if( err ){
@@ -173,7 +327,7 @@ module.exports = function(options, callback){
                             return
                         }
                         self.knex(self.tableName)
-                            .where({email: options.email})                            
+                            .where(whereClause)                            
                             .update({password: hash})
                             .then(function(){
                                 callbackIn(null, self.getSuccess())
