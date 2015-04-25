@@ -252,11 +252,10 @@ module.exports = function(options, callback){
             .catch(callbackIn)
     }
 
-this.passwordTokenHasExpired = function(resetTokenSent){
-    var currentTime = self.getCurrentTime();
-    return( (currentTime - self.passwordResetExpiration) < resetTokenSent )
-}
-
+    this.passwordTokenHasExpired = function(resetTokenSent){
+        var currentTime = self.getCurrentTime();
+        return( (currentTime - self.passwordResetExpiration) < resetTokenSent )
+    }
 
     this.resetPasswordWithCode = function(userId, resetCode, newPassword, callback){
         // get user
