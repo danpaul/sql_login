@@ -1,10 +1,13 @@
 (function(){
 
-var _ = require('underscore')
-var async = require('async')
-var bcrypt = require('bcrypt')
-var base64url = require('base64url')
-var crypto = require('crypto')
+var _ = require('underscore');
+var async = require('async');
+var bcrypt = require('bcrypt');
+var base64url = require('base64url');
+var crypto = require('crypto');
+var debug = require('debug')('sql_login');
+
+var ERROR_INIT = 'Incorrect arguments passed to Login on initialization.';
 
 var errorCodes = {
     '1': 'A user with that email already exists.',
@@ -13,8 +16,9 @@ var errorCodes = {
     '4': 'New password can not be the same as the old password.',
     '5': 'Unable to verify confirmation token.',
     '6': 'Password reset token is not correct.',
-    '7': 'Password reset token has expired.'
-}
+    '7': 'Password reset token has expired.',
+    '8': 'A user with that email or username already exists.'
+};
 
 var sqlLoginSchema = function(table){
     table.increments()
@@ -26,30 +30,59 @@ var sqlLoginSchema = function(table){
     table.integer('reset_token_sent').default(0)
 }
 
-// Options include: knexObject, tableName
+var getSchema = function(options){
+    var useUsername = options && options.useUsername && options.useUsername === true;
+
+    return function(table){
+        table.increments()
+        table.string('email').index().unique()
+        if( useUsername ){
+            table.string('email').index().unique();
+        }
+        table.string('password')
+        table.boolean('is_confirmed').default(false)
+        table.string('confirmation_token').default('')
+        table.string('reset_token').default('')
+        table.integer('reset_token_sent').default(0)
+    }
+}
+
+// Options include: knexObject, tableName, useUsername
 module.exports = function(options, callback){
 
     if( !options.knex || !options.tableName ){
-        callback(new Error('Incorrect arguments passed to Login on initialization.'));
+        debug(ERROR_INIT);
+        callback(new Error(ERROR_INIT));
         return;
     }
 
-    var self = this
-    self.knex = options.knex
-    self.tableName = options.tableName
+    var self = this;
+    self.knex = options.knex;
+    self.tableName = options.tableName;
+    self.useUsername = options.useUsername; 
     self.passwordResetExpiration = 60 * 60 * 24; // 24 hours
 
     this.init = function(){
+        debug('Initializing...');
         // check if table exists
         self.knex.schema.hasTable(self.tableName)
             .then(function(exists) {
                 if( !exists ){
-                    // create the table
-                    self.knex.schema.createTable(self.tableName, sqlLoginSchema)
-                        .then(function(){ callback(); })
-                        .catch(callback)
+                    debug('Creating user table');
 
-                } else { callback(); }
+                    var schema = getSchema(options);
+
+                    // create the table
+                    self.knex.schema.createTable(self.tableName, schema)
+                        .then(function(){
+                            debug('User table created');
+                            callback();
+                        })
+                        .catch(callback)
+                } else {
+                    debug('User table already exists');
+                    callback();
+                }
             })
             .catch(callback)
     }
@@ -125,14 +158,29 @@ module.exports = function(options, callback){
     }
 
     // options object should include email and password
+    // if using username, username is also required
     // passes back a response object with status, code (on failure), and message (on failure)
     this.create = function(options, callbackIn){
+
+        debug('Create user, validating', options);
+
+        var whereClause = {email: options.email};
+
+        if( self.useUsername ){
+            whereClause.username = options.username;
+        }
+
         // test if user already exists
         self.knex(self.tableName)
-            .where({email: options.email})
+            .where(whereClause)
             .then(function(user){
                 if( user.length !== 0 ){
-                    callbackIn(null, self.getError(1))
+                    debug('User already exists', options);
+                    if( self.useUsername ){
+                        callbackIn(null, self.getError(8));
+                    } else {
+                        callbackIn(null, self.getError(1));
+                    }
                     return;
                 }
                 self.createUser(options, callbackIn)
@@ -141,6 +189,8 @@ module.exports = function(options, callback){
     }
 
     this.createUser = function(options, callbackIn){
+
+        debug('Creating user', options);
         // hash password
         bcrypt.hash(options.password, 8, function(err, hash) {
             if( err ){
@@ -150,22 +200,33 @@ module.exports = function(options, callback){
 
             var confirmationToken = self.getRandomString()
 
+            var insertClause = {
+                email: options.email,
+                password: hash,
+                confirmation_token: confirmationToken
+            };
+
+            if( self.useUsername ){
+                insertClause.username = options.username;
+            }
+
             // save user
             self.knex(self.tableName)
-                .insert({
-                    email: options.email,
-                    password: hash,
-                    confirmation_token: confirmationToken
-                })
+                .insert(insertClause)
                 .then(function(response){
+                    debug('User created');
                     successObject = self.getSuccess();
                     successObject.user = {
                         id: response[0],
                         email: options.email,
                         confirmationToken: confirmationToken
                     }
+                    if( self.useUsername ){
+                        successObject.username = options.username;
+                    }
                     callbackIn(null, successObject)
                 })
+                .catch(callbackIn)
         });
     }
 

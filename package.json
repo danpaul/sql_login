@@ -7,7 +7,9 @@
     "type": "git",
     "url": "https://github.com/danpaul/sql_login.git"
   },
-  "author": "Dan Breczinski",
+  "author": {
+    "name": "Dan Breczinski"
+  },
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/danpaul/sql_login/issues"
@@ -20,5 +22,12 @@
     "knex": "^0.7.3",
     "mysql": "^2.5.4",
     "underscore": "^1.7.0"
-  }
+  },
+  "gitHead": "a236325386d54a5a2df69d5529d11605e22928b4",
+  "readme": "This module is designed to be a simple back end component for user authentication but is considered incomplete on its own. The module requires intialization of a [Knex object](http://knexjs.org).\n\nThis module prvoides:\n* Basic user email and password storage, hashing and verification backed by knex compatible SQL DB (Postgres, MySQL, MariaDB, SQLite3).\n* User verification management (generates key to send to user and confirm once user clicks on link)\n* Password reset tokens\n\nThis module does not provide:\n* Session management.\n* Credential validation (i.e. email validation)\n\nSee test/test.js for usage example. Check out the code or message me if you have any questions.",
+  "readmeFilename": "readme.md",
+  "_id": "sql_login@1.1.0",
+  "_shasum": "968e4e5d12d867623562d5295292959ad3a1dd54",
+  "_from": "../../../../../../var/folders/l5/6xcn12xn02xg47gv5v11wgx80000gp/T/npm-3452-2c451b1f/git-cache-0624651d489a/a236325386d54a5a2df69d5529d11605e22928b4",
+  "_resolved": "git://github.com/danpaul/sql_login#a236325386d54a5a2df69d5529d11605e22928b4"
 }
