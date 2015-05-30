@@ -20,24 +20,16 @@ var errorCodes = {
     '8': 'A user with that email or username already exists.'
 };
 
-var sqlLoginSchema = function(table){
-    table.increments()
-    table.string('email').index().unique()
-    table.string('password')
-    table.boolean('is_confirmed').default(false)
-    table.string('confirmation_token').default('')
-    table.string('reset_token').default('')
-    table.integer('reset_token_sent').default(0)
-}
-
 var getSchema = function(options){
-    var useUsername = options && options.useUsername && options.useUsername === true;
+    var useUsername = options &&
+                      options.useUsername &&
+                      options.useUsername === true;
 
     return function(table){
         table.increments()
         table.string('email').index().unique()
         if( useUsername ){
-            table.string('email').index().unique();
+            table.string('username').index().unique()
         }
         table.string('password')
         table.boolean('is_confirmed').default(false)
@@ -59,7 +51,7 @@ module.exports = function(options, callback){
     var self = this;
     self.knex = options.knex;
     self.tableName = options.tableName;
-    self.useUsername = options.useUsername; 
+    self.useUsername = options.useUsername ? true : false;
     self.passwordResetExpiration = 60 * 60 * 24; // 24 hours
 
     this.init = function(){
